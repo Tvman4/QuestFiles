@@ -23,28 +23,31 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Make gradlew executable
-        run: |
-          if [ -f gradlew ]; then
-            chmod +x gradlew
-          else
-            echo "No gradlew found – generating basic wrapper"
-            gradle wrapper --gradle-version 8.7 || true
-            chmod +x gradlew || true
-          fi
+        run: chmod +x gradlew || true
 
-      - name: Build Debug APK
+      - name: Generate keystore
         run: |
-          if [ -f gradlew ]; then
-            ./gradlew assembleDebug --stacktrace
-          else
-            echo "Gradle wrapper missing. Please open the project in Android Studio once and commit the gradle/wrapper folder."
-            exit 1
-          fi
+          keytool -genkey -v \
+            -keystore app/release.jks \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -alias questfiles \
+            -storepass questfiles123 \
+            -keypass questfiles123 \
+            -dname "CN=QuestFiles, OU=Tvman4, O=Tvman4, L=Unknown, ST=Unknown, C=US"
+
+      - name: Build Signed Release APK
+        env:
+          KEYSTORE_PATH: app/release.jks
+          KEYSTORE_PASSWORD: questfiles123
+          KEY_ALIAS: questfiles
+          KEY_PASSWORD: questfiles123
+        run: ./gradlew assembleRelease --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: QuestFiles-APK
-          path: app/build/outputs/apk/debug/*.apk
+          name: QuestFiles-Release-APK
+          path: app/build/outputs/apk/release/*.apk
           retention-days: 30
-          if-no-files-found: warn
